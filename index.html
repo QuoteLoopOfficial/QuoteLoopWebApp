@@ -69,11 +69,18 @@ body::before{
 <body>
 
 <!-- Compatibility stubs — landing-DOM references the JS makes unguarded.
-     The JS toggles `display` / sets `innerHTML` / reads `style` on these;
-     stubs let those calls succeed with no visible effect. Removable when
-     the JS is later refactored to drop the landing dependencies. -->
+     The JS toggles `display` / sets `innerHTML` / reads `style` on these,
+     and binds event listeners at script execution time. Stubs let those
+     calls succeed with no visible effect. Removable when the JS is later
+     refactored to drop the landing dependencies.
+
+     Covers: #mainSite (showPage display toggle), #nav (scroll handler),
+     #nav-auth-btns (updateNavForAuth innerHTML), #navToggle + #navLinks
+     (mobile nav toggle addEventListener at script exec time). -->
 <div id="mainSite" style="display:none"></div>
 <nav id="nav" style="display:none"><div id="nav-auth-btns"></div></nav>
+<button id="navToggle" style="display:none"></button>
+<div id="navLinks" style="display:none"></div>
 
 <div class="legal-page" id="page-signin">
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px">
