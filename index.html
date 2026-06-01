@@ -138,7 +138,7 @@ body::before{
         </p>
       </div>
       <p style="text-align:center;margin-top:24px;font-size:0.8rem;color:var(--text-muted)">
-        <a href="#" onclick="showPage('home')" style="color:var(--text-muted)">← Back to quoteloop.com.au</a>
+        <a href="#" onclick="showPage('home')" style="color:var(--text-muted)">← Back to quoteloop.xyz</a>
       </p>
     </div>
   </div>
@@ -207,7 +207,7 @@ body::before{
         </p>
       </div>
       <p style="text-align:center;margin-top:24px;font-size:0.8rem;color:var(--text-muted)">
-        <a href="#" onclick="showPage('home')" style="color:var(--text-muted)">← Back to quoteloop.com.au</a>
+        <a href="#" onclick="showPage('home')" style="color:var(--text-muted)">← Back to quoteloop.xyz</a>
       </p>
     </div>
   </div>
@@ -2063,7 +2063,7 @@ window.addEventListener('scroll', () => {
 });
 
 // ── PAGE ROUTING ──────────────────────────────────────────────────────────
-// Legal pages that get real, linkable hash URLs (e.g. quoteloop.com.au/#/terms)
+// Legal pages that get real, linkable hash URLs (e.g. quoteloop.xyz/#/terms)
 const LEGAL_ROUTES = ['privacy', 'tos', 'eula', 'refund', 'support', 'delete'];
 
 function showPage(page) {
@@ -6437,8 +6437,7 @@ async function handleAppleSignIn() {
   const btn = document.getElementById('apple-signin-btn');
   if (btn) { btn.textContent = 'Redirecting to Apple...'; btn.disabled = true; }
 
-  // TODO: cutover-domain — update to quoteloop.xyz
-  const redirectTo = encodeURIComponent('https://quoteloop.com.au');
+  const redirectTo = encodeURIComponent('https://quoteloop.xyz');
   window.location.href = SUPA_URL + '/auth/v1/authorize?provider=apple&redirect_to=' + redirectTo;
 }
 
@@ -7535,7 +7534,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (session) {
     updateNavForAuth(session.user);
   }
-  // Note: don't auto-route on page load — only route on explicit sign-in
+  // Note: auto-routing on page load lives in routeDefault() at end of script — this block stays focused on auth-callback + recovery-token side-effects only.
 
   // Handle auth modal routing to pages instead
   var modal = document.getElementById('authModal');
@@ -8103,8 +8102,7 @@ async function adminResetPassword(email, el) {
   const res = await fetch(SUPA_URL + '/auth/v1/recover', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-  // TODO: cutover-domain — update to quoteloop.xyz
-    body: JSON.stringify({ email, redirectTo: 'https://quoteloop.com.au' })
+    body: JSON.stringify({ email, redirectTo: 'https://quoteloop.xyz' })
   });
   if(res.ok) {
     el.innerHTML = '<div style="font-size:0.85rem;color:var(--teal);padding:4px">✓ Reset email sent to ' + email + '</div>';
@@ -8634,6 +8632,48 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     }
   });
 });
+
+// ── DEFAULT ROUTE ON COLD LOAD ────────────────────────────────────────────
+// Picks a starting page when the user lands on the webapp with no hash.
+// Hash-routed deep links take precedence (existing routeFromHash handles them).
+// Auth-callback / recovery query-string URLs also take precedence (handled by
+// the existing DOMContentLoaded block near line 7521). Uses the same
+// checkSession() + supaFetch profile-read patterns as the rest of the file.
+// Falls back to signin on any error so the page is never blank.
+//
+// HISTORICAL NOTE: the comment "don't auto-route on page load" near the
+// recovery/OAuth block was a constraint from the landing repo (would have
+// stolen users from the marketing page). This webapp repo has no marketing
+// page, so an auth-aware default IS the correct UX here.
+async function routeDefault() {
+  // 1. Hash present → existing hash router handles it.
+  if (window.location.hash) return;
+
+  // 2. OAuth callback / password-reset query params → existing DOMContentLoaded
+  //    handler (~line 7521) handles them. Skip to avoid the showPage race.
+  const search = window.location.search;
+  if (search && /(?:^|[?&])(code|access_token|type=recovery)(?:=|&|$)/.test(search)) return;
+
+  // 3. Auth-aware default.
+  let route = 'signin';
+  try {
+    const session = await checkSession();
+    if (session && window._currentUser) {
+      const res = await supaFetch(
+        `/rest/v1/profiles?id=eq.${window._currentUser.id}&select=onboarding_complete`
+      );
+      const complete = res.data?.[0]?.onboarding_complete === true;
+      route = complete ? 'app' : 'onboarding';
+    }
+  } catch (e) {
+    route = 'signin';
+  }
+  console.log('[QuoteLoop WebApp] Default route:', route);
+  showPage(route);
+}
+document.addEventListener('DOMContentLoaded', routeDefault);
+// Also run immediately in case DOMContentLoaded has already fired.
+if (document.readyState !== 'loading') routeDefault();
 </script>
 </body>
 </html>
