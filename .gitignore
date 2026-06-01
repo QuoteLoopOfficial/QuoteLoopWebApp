@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Editor / scratch
+*.swp
+*.bak
+*~
+
+# Node (none currently — pure static site, but guard against future tooling)
+node_modules/
+
+# Vercel local
+.vercel/
+
+# Apple Sign-in private keys — NEVER commit these
+*.p8
+
+# Local notes
+*.rtf
